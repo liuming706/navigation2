@@ -20,7 +20,7 @@
 
 #include "behaviortree_cpp_v3/bt_factory.h"
 
-#include "utils/test_action_server.hpp"
+#include "../../test_action_server.hpp"
 #include "nav2_behavior_tree/plugins/action/wait_action.hpp"
 
 class WaitActionServer : public TestActionServer<nav2_msgs::action::Wait>
@@ -117,18 +117,18 @@ TEST_F(WaitActionTestFixture, test_ports)
       </root>)";
 
   tree_ = std::make_shared<BT::Tree>(factory_->createTreeFromText(xml_txt, config_->blackboard));
-  EXPECT_EQ(tree_->rootNode()->getInput<double>("wait_duration"), 1.0);
+  EXPECT_EQ(tree_->rootNode()->getInput<int>("wait_duration"), 1);
 
   xml_txt =
     R"(
       <root main_tree_to_execute = "MainTree" >
         <BehaviorTree ID="MainTree">
-            <Wait wait_duration="10.0" />
+            <Wait wait_duration="10" />
         </BehaviorTree>
       </root>)";
 
   tree_ = std::make_shared<BT::Tree>(factory_->createTreeFromText(xml_txt, config_->blackboard));
-  EXPECT_EQ(tree_->rootNode()->getInput<double>("wait_duration"), 10.0);
+  EXPECT_EQ(tree_->rootNode()->getInput<int>("wait_duration"), 10);
 }
 
 TEST_F(WaitActionTestFixture, test_tick)
@@ -137,7 +137,7 @@ TEST_F(WaitActionTestFixture, test_tick)
     R"(
       <root main_tree_to_execute = "MainTree" >
         <BehaviorTree ID="MainTree">
-            <Wait wait_duration="-5.0"/>
+            <Wait wait_duration="-5"/>
         </BehaviorTree>
       </root>)";
 

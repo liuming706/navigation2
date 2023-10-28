@@ -152,30 +152,6 @@ void AStarAlgorithm<NodeT>::setStart(
 }
 
 template<>
-void AStarAlgorithm<Node2D>::populateExpansionsLog(
-  const NodePtr & node,
-  std::vector<std::tuple<float, float, float>> * expansions_log)
-{
-  Node2D::Coordinates coords = node->getCoords(node->getIndex());
-  expansions_log->emplace_back(
-    _costmap->getOriginX() + ((coords.x + 0.5) * _costmap->getResolution()),
-    _costmap->getOriginY() + ((coords.y + 0.5) * _costmap->getResolution()),
-    0.0);
-}
-
-template<typename NodeT>
-void AStarAlgorithm<NodeT>::populateExpansionsLog(
-  const NodePtr & node,
-  std::vector<std::tuple<float, float, float>> * expansions_log)
-{
-  typename NodeT::Coordinates coords = node->pose;
-  expansions_log->emplace_back(
-    _costmap->getOriginX() + ((coords.x + 0.5) * _costmap->getResolution()),
-    _costmap->getOriginY() + ((coords.y + 0.5) * _costmap->getResolution()),
-    NodeT::motion_table.getAngleFromBin(coords.theta));
-}
-
-template<>
 void AStarAlgorithm<Node2D>::setGoal(
   const unsigned int & mx,
   const unsigned int & my,
@@ -231,12 +207,12 @@ bool AStarAlgorithm<NodeT>::areInputsValid()
   if (getToleranceHeuristic() < 0.001 &&
     !_goal->isNodeValid(_traverse_unknown, _collision_checker))
   {
-    throw nav2_core::GoalOccupied("Goal was in lethal cost");
+    throw std::runtime_error("Failed to compute path, goal is occupied with no tolerance.");
   }
 
   // Check if starting point is valid
   if (!_start->isNodeValid(_traverse_unknown, _collision_checker)) {
-    throw nav2_core::StartOccupied("Start was in lethal cost");
+    throw std::runtime_error("Starting point in lethal space! Cannot create feasible plan.");
   }
 
   return true;
@@ -245,8 +221,7 @@ bool AStarAlgorithm<NodeT>::areInputsValid()
 template<typename NodeT>
 bool AStarAlgorithm<NodeT>::createPath(
   CoordinateVector & path, int & iterations,
-  const float & tolerance,
-  std::vector<std::tuple<float, float, float>> * expansions_log)
+  const float & tolerance)
 {
   steady_clock::time_point start_time = steady_clock::now();
   _tolerance = tolerance;
@@ -297,11 +272,6 @@ bool AStarAlgorithm<NodeT>::createPath(
 
     // 1) Pick Nbest from O s.t. min(f(Nbest)), remove from queue
     current_node = getNextNode();
-
-    // Save current node coordinates for debug
-    if (expansions_log) {
-      populateExpansionsLog(current_node, expansions_log);
-    }
 
     // We allow for nodes to be queued multiple times in case
     // shorter paths result in it, but we can visit only once

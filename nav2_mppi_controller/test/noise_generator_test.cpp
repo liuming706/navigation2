@@ -1,4 +1,5 @@
-// Copyright (c) 2022 Samsung Research America, @artofnothingness Alexey Budyakov
+// Copyright (c) 2022 Samsung Research America, @artofnothingness Alexey
+// Budyakov
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,30 +13,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "nav2_mppi_controller/tools/noise_generator.hpp"
+
 #include <chrono>
 #include <thread>
 
 #include "gtest/gtest.h"
-#include "rclcpp/rclcpp.hpp"
-#include "nav2_mppi_controller/tools/noise_generator.hpp"
+#include "nav2_mppi_controller/models/control_sequence.hpp"
 #include "nav2_mppi_controller/models/optimizer_settings.hpp"
 #include "nav2_mppi_controller/models/state.hpp"
-#include "nav2_mppi_controller/models/control_sequence.hpp"
-
+#include "nav2_mppi_controller/tools/parameters_handler.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "rclcpp_lifecycle/rclcpp_lifecycle/lifecycle_node.hpp"
 // Tests noise generator object
 
-class RosLockGuard
-{
-public:
-  RosLockGuard() {rclcpp::init(0, nullptr);}
-  ~RosLockGuard() {rclcpp::shutdown();}
+class RosLockGuard {
+ public:
+  RosLockGuard() { rclcpp::init(0, nullptr); }
+  ~RosLockGuard() { rclcpp::shutdown(); }
 };
 RosLockGuard g_rclcpp;
 
 using namespace mppi;  // NOLINT
 
-TEST(NoiseGeneratorTest, NoiseGeneratorLifecycle)
-{
+TEST(NoiseGeneratorTest, NoiseGeneratorLifecycle) {
   // Tests shuts down internal thread cleanly
   NoiseGenerator generator;
   mppi::models::OptimizerSettings settings;
@@ -43,7 +44,8 @@ TEST(NoiseGeneratorTest, NoiseGeneratorLifecycle)
   settings.time_steps = 25;
 
   auto node = std::make_shared<rclcpp_lifecycle::LifecycleNode>("node");
-  node->declare_parameter("test_name.regenerate_noises", rclcpp::ParameterValue(false));
+  node->declare_parameter("test_name.regenerate_noises",
+                          rclcpp::ParameterValue(false));
   ParametersHandler handler(node);
 
   generator.initialize(settings, false, "test_name", &handler);
@@ -51,11 +53,11 @@ TEST(NoiseGeneratorTest, NoiseGeneratorLifecycle)
   generator.shutdown();
 }
 
-TEST(NoiseGeneratorTest, NoiseGeneratorMain)
-{
+TEST(NoiseGeneratorTest, NoiseGeneratorMain) {
   // Tests shuts down internal thread cleanly
   auto node = std::make_shared<rclcpp_lifecycle::LifecycleNode>("node");
-  node->declare_parameter("test_name.regenerate_noises", rclcpp::ParameterValue(true));
+  node->declare_parameter("test_name.regenerate_noises",
+                          rclcpp::ParameterValue(true));
   ParametersHandler handler(node);
   NoiseGenerator generator;
   mppi::models::OptimizerSettings settings;
@@ -77,7 +79,8 @@ TEST(NoiseGeneratorTest, NoiseGeneratorMain)
   mppi::models::State state;
   state.reset(settings.batch_size, settings.time_steps);
 
-  // Request an update with no noise yet generated, should result in identical outputs
+  // Request an update with no noise yet generated, should result in identical
+  // outputs
   generator.initialize(settings, false, "test_name", &handler);
   generator.reset(settings, false);  // sets initial sizing and zeros out noises
   generator.setNoisedControls(state, control_sequence);

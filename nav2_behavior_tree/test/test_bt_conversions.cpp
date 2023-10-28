@@ -16,14 +16,14 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include <chrono>
-#include <set>
+#include <string>
 
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
 #include "behaviortree_cpp_v3/bt_factory.h"
-#include "nav2_behavior_tree/bt_utils.hpp"
+#include "nav2_behavior_tree/bt_conversions.hpp"
 
 template<typename T>
 class TestNode : public BT::SyncActionNode
@@ -266,57 +266,4 @@ TEST(MillisecondsPortTest, test_correct_syntax)
   tree = factory.createTreeFromText(xml_txt);
   tree.rootNode()->getInput("test", value);
   EXPECT_EQ(value.count(), 123);
-}
-
-TEST(ErrorCodePortTest, test_correct_syntax)
-{
-  std::string xml_txt =
-    R"(
-      <root main_tree_to_execute = "MainTree" >
-        <BehaviorTree ID="MainTree">
-            <ErrorCodePort test="100;204;212"/>
-        </BehaviorTree>
-      </root>)";
-
-  BT::BehaviorTreeFactory factory;
-  factory.registerNodeType<TestNode<std::set<int>>>("ErrorCodePort");
-  auto tree = factory.createTreeFromText(xml_txt);
-
-  tree = factory.createTreeFromText(xml_txt);
-  std::set<int> value;
-  tree.rootNode()->getInput("test", value);
-
-  EXPECT_TRUE(value.find(100) != value.end());
-  EXPECT_TRUE(value.find(204) != value.end());
-  EXPECT_TRUE(value.find(212) != value.end());
-}
-
-TEST(deconflictPortAndParamFrameTest, test_correct_syntax)
-{
-  std::string xml_txt =
-    R"(
-      <root main_tree_to_execute = "MainTree" >
-        <BehaviorTree ID="MainTree">
-            <ParamPort test="1"/>
-        </BehaviorTree>
-      </root>)";
-
-  BT::BehaviorTreeFactory factory;
-  factory.registerNodeType<TestNode<int>>("ParamPort");
-  auto tree = factory.createTreeFromText(xml_txt);
-
-  rclcpp::init(0, nullptr);
-  std::shared_ptr<rclcpp::Node> node = std::make_shared<rclcpp::Node>("test_node");
-  node->declare_parameter<int>("test", 2);
-  node->declare_parameter<int>("test_alternative", 3);
-
-  int value = BT::deconflictPortAndParamFrame<int, BT::TreeNode>(
-    node, "test_alternative", tree.rootNode());
-
-  EXPECT_EQ(value, 3);
-
-  value = BT::deconflictPortAndParamFrame<int, BT::TreeNode>(
-    node, "test", tree.rootNode());
-
-  EXPECT_EQ(value, 1);
 }

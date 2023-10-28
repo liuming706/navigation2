@@ -47,7 +47,7 @@ static int pf_resample_limit(pf_t * pf, int k);
 pf_t * pf_alloc(
   int min_samples, int max_samples,
   double alpha_slow, double alpha_fast,
-  pf_init_model_fn_t random_pose_fn)
+  pf_init_model_fn_t random_pose_fn, void * random_pose_data)
 {
   int i, j;
   pf_t * pf;
@@ -59,6 +59,7 @@ pf_t * pf_alloc(
   pf = calloc(1, sizeof(pf_t));
 
   pf->random_pose_fn = random_pose_fn;
+  pf->random_pose_data = random_pose_data;
 
   pf->min_samples = min_samples;
   pf->max_samples = max_samples;
@@ -290,7 +291,7 @@ void pf_update_sensor(pf_t * pf, pf_sensor_model_fn_t sensor_fn, void * sensor_d
 
 
 // Resample the distribution
-void pf_update_resample(pf_t * pf, void * random_pose_data)
+void pf_update_resample(pf_t * pf)
 {
   int i;
   double total;
@@ -343,7 +344,7 @@ void pf_update_resample(pf_t * pf, void * random_pose_data)
     sample_b = set_b->samples + set_b->sample_count++;
 
     if (drand48() < w_diff) {
-      sample_b->pose = (pf->random_pose_fn)(random_pose_data);
+      sample_b->pose = (pf->random_pose_fn)(pf->random_pose_data);
     } else {
       // Can't (easily) combine low-variance sampler with KLD adaptive
       // sampling, so we'll take the more traditional route.
@@ -463,6 +464,7 @@ void pf_cluster_stats(pf_t * pf, pf_sample_set_t * set)
 
   // Workspace
   double m[4], c[2][2];
+  size_t count;
   double weight;
 
   // Cluster the samples
@@ -473,6 +475,7 @@ void pf_cluster_stats(pf_t * pf, pf_sample_set_t * set)
 
   for (i = 0; i < set->cluster_max_count; i++) {
     cluster = set->clusters + i;
+    cluster->count = 0;
     cluster->weight = 0;
     cluster->mean = pf_vector_zero();
     cluster->cov = pf_matrix_zero();
@@ -488,6 +491,7 @@ void pf_cluster_stats(pf_t * pf, pf_sample_set_t * set)
   }
 
   // Initialize overall filter stats
+  count = 0;
   weight = 0.0;
   set->mean = pf_vector_zero();
   set->cov = pf_matrix_zero();
@@ -518,8 +522,10 @@ void pf_cluster_stats(pf_t * pf, pf_sample_set_t * set)
 
     cluster = set->clusters + cidx;
 
+    cluster->count += 1;
     cluster->weight += sample->weight;
 
+    count += 1;
     weight += sample->weight;
 
     // Compute mean
